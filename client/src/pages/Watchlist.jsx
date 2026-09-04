@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useWatchlist } from '../context/WatchlistContext';
 import SearchBar from '../components/SearchBar';
-import SkeletonLoader from '../components/SkeletonLoader';
 import { getWatchlistSummary, simulateMarketTick, recordVisitSnapshot } from '../api';
 
 const DEFAULT_FALLBACK = [
@@ -26,7 +25,7 @@ const DEFAULT_CHANGES = [
 
 const Watchlist = () => {
   const navigate = useNavigate();
-  const { watchlist: contextWatchlist, loading: watchlistLoading, isGuest, add, remove, reorder } = useWatchlist();
+  const { watchlist: contextWatchlist, isGuest, add, remove, reorder } = useWatchlist();
   
   const [summaryData, setSummaryData] = useState({
     watchlist: DEFAULT_FALLBACK,
@@ -34,20 +33,22 @@ const Watchlist = () => {
     marketStatus: { status: 'MARKET OPEN' },
     lastVisitedAt: new Date(Date.now() - 30 * 60 * 1000)
   });
-  const [summaryLoading, setSummaryLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [simulating, setSimulating] = useState(false);
 
   const fetchSummary = async () => {
     try {
       const res = await getWatchlistSummary();
-      if (res && res.watchlist && res.watchlist.length > 0) {
-        setSummaryData(res);
+      if (res) {
+        setSummaryData({
+          watchlist: (res.watchlist && res.watchlist.length > 0) ? res.watchlist : DEFAULT_FALLBACK,
+          meaningfulChanges: (res.meaningfulChanges && res.meaningfulChanges.length > 0) ? res.meaningfulChanges : DEFAULT_CHANGES,
+          marketStatus: res.marketStatus || { status: 'MARKET OPEN' },
+          lastVisitedAt: res.lastVisitedAt || new Date(Date.now() - 30 * 60 * 1000)
+        });
       }
     } catch (e) {
       console.warn('Summary fetch notice:', e);
-    } finally {
-      setSummaryLoading(false);
     }
   };
 
@@ -287,69 +288,60 @@ const Watchlist = () => {
           </div>
         </div>
 
-        {summaryLoading ? (
-          <SkeletonLoader count={2} />
-        ) : filteredChanges.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 border border-dashed border-slate-200 rounded-2xl space-y-2">
-            <p className="text-sm font-black text-slate-800">No major changes detected since {getTimeAgoText(lastVisitedAt)}.</p>
-            <p className="text-xs text-slate-500 font-medium">Click <strong>"⚡ Simulate Market Shift"</strong> above to trigger live market price fluctuations!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filteredChanges.map((item) => {
-              const isHigh = item.impact === 'HIGH';
-              const priceClass = item.change >= 0 ? 'text-[#00d09c]' : 'text-red-500';
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {filteredChanges.map((item) => {
+            const isHigh = item.impact === 'HIGH';
+            const priceClass = item.change >= 0 ? 'text-[#00d09c]' : 'text-red-500';
 
-              return (
-                <div
-                  key={item.symbol}
-                  onClick={() => navigate(`/stock/${item.symbol}`)}
-                  className={`p-6 rounded-2xl border transition-all cursor-pointer space-y-4 shadow-sm hover:shadow-md group ${
-                    isHigh
-                      ? 'bg-red-50/50 border-red-200 hover:border-red-400'
-                      : 'bg-amber-50/50 border-amber-200 hover:border-amber-400'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-black text-xl text-slate-900 group-hover:text-[#5367ff] transition-colors">{item.symbol}</span>
-                        <span className={isHigh ? 'badge-high' : 'badge-medium'}>
-                          {isHigh ? '🔴 HIGH IMPACT' : '🟡 MEDIUM'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500 font-semibold">{item.name}</div>
+            return (
+              <div
+                key={item.symbol}
+                onClick={() => navigate(`/stock/${item.symbol}`)}
+                className={`p-6 rounded-2xl border transition-all cursor-pointer space-y-4 shadow-sm hover:shadow-md group ${
+                  isHigh
+                    ? 'bg-red-50/50 border-red-200 hover:border-red-400'
+                    : 'bg-amber-50/50 border-amber-200 hover:border-amber-400'
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-black text-xl text-slate-900 group-hover:text-[#5367ff] transition-colors">{item.symbol}</span>
+                      <span className={isHigh ? 'badge-high' : 'badge-medium'}>
+                        {isHigh ? '🔴 HIGH IMPACT' : '🟡 MEDIUM'}
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <div className="font-black text-slate-900 text-xl">${item.price.toFixed(2)}</div>
-                      <div className={`text-xs font-black ${priceClass}`}>
-                        {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}%
-                      </div>
+                    <div className="text-xs text-slate-500 font-semibold">{item.name}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-slate-900 text-xl">${item.price.toFixed(2)}</div>
+                    <div className={`text-xs font-black ${priceClass}`}>
+                      {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}%
                     </div>
-                  </div>
-
-                  {/* Reasons List */}
-                  <div className="space-y-2 pt-3 border-t border-slate-200 text-xs">
-                    <div className="text-[11px] font-black text-[#5367ff] tracking-wider">WHY THIS MATTERS:</div>
-                    {Array.isArray(item.reasons) ? item.reasons.map((reason, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-slate-700 text-[11px] font-semibold">
-                        <span className={isHigh ? 'text-red-500' : 'text-amber-500'}>•</span>
-                        <span>{reason}</span>
-                      </div>
-                    )) : (
-                      <div className="text-slate-700 text-[11px] font-semibold">• Price shift detected relative to baseline</div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-center text-[11px] text-slate-500 font-bold pt-1">
-                    <span>Score: {item.score || 85}/100</span>
-                    <span className="text-[#5367ff] group-hover:underline flex items-center gap-1">View full analysis &rarr;</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {/* Reasons List */}
+                <div className="space-y-2 pt-3 border-t border-slate-200 text-xs">
+                  <div className="text-[11px] font-black text-[#5367ff] tracking-wider">WHY THIS MATTERS:</div>
+                  {Array.isArray(item.reasons) ? item.reasons.map((reason, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-slate-700 text-[11px] font-semibold">
+                      <span className={isHigh ? 'text-red-500' : 'text-amber-500'}>•</span>
+                      <span>{reason}</span>
+                    </div>
+                  )) : (
+                    <div className="text-slate-700 text-[11px] font-semibold">• Price shift detected relative to baseline</div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] text-slate-500 font-bold pt-1">
+                  <span>Score: {item.score || 85}/100</span>
+                  <span className="text-[#5367ff] group-hover:underline flex items-center gap-1">View full analysis &rarr;</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {/* SECTION 2: MY WATCHLIST */}
