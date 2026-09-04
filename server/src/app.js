@@ -19,15 +19,8 @@ app.use(helmet({ contentSecurityPolicy: false }));
 // Middlewares
 app.use(express.json());
 
-// CORS – allow client URL or allow dynamic origin in production
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-app.use(cors({ origin: (origin, callback) => {
-  if (!origin || origin === clientUrl || process.env.NODE_ENV === 'production') {
-    callback(null, true);
-  } else {
-    callback(null, true);
-  }
-}, credentials: true }));
+// CORS – allow dynamic origin in cloud deployment
+app.use(cors({ origin: true, credentials: true }));
 
 // Rate Limiter for Auth Routes
 const authLimiter = rateLimit({
@@ -54,7 +47,10 @@ app.use('/api/news', newsRoutes);
 const clientDistPath = path.join(__dirname, '../../client/dist');
 if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
-  app.get('*', (req, res) => {
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 }
