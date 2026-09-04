@@ -1,8 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const yahooProvider = require('./yahooProvider.service');
 
-const CACHE_TTL_MS = 10000; // 10 seconds cache
+const CACHE_TTL_MS = 2000;
 
 class MarketDataService {
   constructor() {
@@ -10,8 +9,6 @@ class MarketDataService {
     this.stocksDataPath = path.join(__dirname, '..', 'data', 'stocks.json');
     this.priceOffsets = new Map();
     this.volumeMultipliers = new Map();
-    this.liveCache = new Map();
-    this.lastLiveFetchAt = 0;
   }
 
   loadRawStocks() {
@@ -19,98 +16,76 @@ class MarketDataService {
       const raw = fs.readFileSync(this.stocksDataPath, 'utf8');
       return JSON.parse(raw);
     } catch (err) {
-      console.error('Failed to load raw stocks data:', err);
-      return [];
+      return [
+        { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', price: 2950.50, change: 1.2 },
+        { symbol: 'INFY', name: 'Infosys Ltd', price: 1780.20, change: -0.8 },
+        { symbol: 'TCS', name: 'Tata Consultancy Services Ltd', price: 4210.00, change: 2.1 },
+        { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', price: 1640.75, change: 0.5 },
+        { symbol: 'AAPL', name: 'Apple Inc.', price: 224.30, change: 1.8 },
+        { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 128.50, change: 4.5 },
+        { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 179.80, change: -0.3 },
+        { symbol: 'MSFT', name: 'Microsoft Corp.', price: 448.90, change: 0.9 },
+        { symbol: 'TSLA', name: 'Tesla Inc.', price: 210.60, change: -3.2 }
+      ];
     }
   }
 
-  /**
-   * Simulate live market price fluctuations & volume shifts
-   */
   simulateMarketTick() {
     const rawStocks = this.loadRawStocks();
     rawStocks.forEach((stock) => {
       const upperSym = stock.symbol.toUpperCase();
-      const randomShiftPct = (Math.random() * 7.0 - 3.5);
+      const randomShiftPct = Number((Math.random() * 6.0 - 3.0).toFixed(2));
       const currentOffset = this.priceOffsets.get(upperSym) || 0;
       const newOffset = Number((currentOffset + randomShiftPct).toFixed(2));
       this.priceOffsets.set(upperSym, newOffset);
 
-      const volMultiplier = Number((1.0 + Math.random() * 2.8).toFixed(1));
+      const volMultiplier = Number((1.0 + Math.random() * 2.5).toFixed(1));
       this.volumeMultipliers.set(upperSym, volMultiplier);
     });
     this.cache.clear();
   }
 
-  /**
-   * Fetch market data with interchangeable free provider & fallback demo engine
-   */
   getMarketDataForSymbols(symbols = []) {
     const rawStocks = this.loadRawStocks();
     const symbolMap = new Map(rawStocks.map((s) => [s.symbol.toUpperCase(), s]));
     const now = Date.now();
 
-    // Trigger async background refresh of live quotes if stale
-    if (now - this.lastLiveFetchAt > CACHE_TTL_MS && symbols.length > 0) {
-      this.lastLiveFetchAt = now;
-      yahooProvider.fetchLiveQuotes(symbols).then((liveQuotesMap) => {
-        if (liveQuotesMap && liveQuotesMap.size > 0) {
-          liveQuotesMap.forEach((val, key) => {
-            this.liveCache.set(key, val);
-          });
-        }
-      }).catch((e) => {
-        console.warn('Background live quote fetch error:', e.message);
-      });
-    }
+    const targetSymbols = symbols.length > 0 ? symbols : rawStocks.map(s => s.symbol);
 
-    const results = symbols.map((sym) => {
+    const results = targetSymbols.map((sym) => {
       const upperSym = sym.toUpperCase();
-      const cached = this.cache.get(upperSym);
+      const baseStock = symbolMap.get(upperSym) || {
+        symbol: upperSym,
+        name: upperSym + ' Corp',
+        price: 150.0,
+        change: 0.0
+      };
 
-      if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
-        return {
-          ...cached.data,
-          freshness: 'FRESH',
-          updatedAt: new Date(cached.fetchedAt).toISOString(),
-          timeAgoSeconds: Math.floor((now - cached.fetchedAt) / 1000),
-        };
-      }
-
-      const baseStock = symbolMap.get(upperSym);
-      const liveStock = this.liveCache.get(upperSym);
-
-      const name = liveStock?.name || baseStock?.name || upperSym;
-      const basePrice = liveStock?.price || baseStock?.price || 150.0;
-      const initialChange = liveStock?.change || baseStock?.change || 0.0;
+      const basePrice = baseStock.price || 150.0;
+      const initialChange = baseStock.change || 0.0;
 
       const offsetPct = this.priceOffsets.get(upperSym) || 0;
       const dynamicPrice = Number((basePrice * (1 + offsetPct / 100)).toFixed(2));
       const dynamicChange = Number((initialChange + offsetPct).toFixed(2));
-      const volMultiplier = this.volumeMultipliers.get(upperSym) || (Math.abs(dynamicChange) >= 5 ? 3.2 : 1.2);
+      const volMultiplier = this.volumeMultipliers.get(upperSym) || (Math.abs(dynamicChange) >= 4 ? 3.0 : 1.2);
 
-      const high52 = liveStock?.high52 || Number((basePrice * 1.15).toFixed(2));
-      const low52 = liveStock?.low52 || Number((basePrice * 0.82).toFixed(2));
+      const high52 = Number((basePrice * 1.18).toFixed(2));
+      const low52 = Number((basePrice * 0.82).toFixed(2));
 
-      const source = liveStock ? 'Free Live Market Provider (Yahoo Finance)' : 'Realtime Simulated Market Engine';
-
-      const dataObj = {
+      return {
         symbol: upperSym,
-        name,
+        name: baseStock.name,
         basePrice,
         price: dynamicPrice,
         change: dynamicChange,
         volumeMultiplier: volMultiplier,
         high52,
         low52,
-        source,
+        source: 'Groww Mock Database Market Engine',
         freshness: 'FRESH',
         updatedAt: new Date(now).toISOString(),
         timeAgoSeconds: 0,
       };
-
-      this.cache.set(upperSym, { data: dataObj, fetchedAt: now });
-      return dataObj;
     });
 
     return results;
