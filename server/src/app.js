@@ -43,18 +43,19 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/news', newsRoutes);
 
-// Multi-location candidate search for client build output
+// Candidate paths for client static assets
 const candidatePaths = [
+  path.resolve(__dirname, '../public'),
   path.resolve(__dirname, '../../client/dist'),
   path.resolve(process.cwd(), 'client/dist'),
-  path.resolve(process.cwd(), '../client/dist'),
-  path.resolve(__dirname, '../client/dist')
+  path.resolve(process.cwd(), 'server/public'),
+  path.resolve(process.cwd(), 'public')
 ];
 
-let resolvedDistPath = candidatePaths.find(p => fs.existsSync(p));
+let resolvedDistPath = candidatePaths.find(p => fs.existsSync(p) && fs.existsSync(path.join(p, 'index.html')));
 
 if (resolvedDistPath) {
-  console.log('✅ Found client build at:', resolvedDistPath);
+  console.log('✅ Serving client static assets from:', resolvedDistPath);
   app.use(express.static(resolvedDistPath));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
@@ -63,13 +64,13 @@ if (resolvedDistPath) {
     res.sendFile(path.join(resolvedDistPath, 'index.html'));
   });
 } else {
-  console.warn('⚠️ Warning: Client build directory (client/dist) not found in candidate paths:', candidatePaths);
+  console.warn('⚠️ Warning: No precompiled client assets found in:', candidatePaths);
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
     res.send(`
-      <!語html>
+      <!DOCTYPE html>
       <html>
         <head><title>Groww Smart Watchlist - API Ready</title></head>
         <body style="font-family: sans-serif; padding: 40px; text-align: center;">
