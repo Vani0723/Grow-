@@ -1,0 +1,25 @@
+{
+  "name": "smart-market-watchlist",
+  "version": "1.0.0",
+  "description": "Smart Market Watchlist application built with React, Node.js, Express, and MongoDB",
+  "main": "server/src/server.js",
+  "scripts": {
+    "postinstall": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "node server/src/server.js",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "keywords": [
+    "groww",
+    "stock-watchlist",
+    "market-watchlist",
+    "fintech",
+    "react",
+    "express",
+    "mongodb"
+  ],
+  "author": "Vani",
+  "license": "MIT"
+}
