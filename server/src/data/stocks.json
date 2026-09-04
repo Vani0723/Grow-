@@ -1,0 +1,14 @@
+[
+  { "symbol": "AAPL", "name": "Apple Inc.", "price": 185.50, "change": 1.25 },
+  { "symbol": "MSFT", "name": "Microsoft Corp.", "price": 402.10, "change": -0.85 },
+  { "symbol": "GOOGL", "name": "Alphabet Inc.", "price": 142.80, "change": 5.40 },
+  { "symbol": "AMZN", "name": "Amazon.com Inc.", "price": 174.30, "change": 2.10 },
+  { "symbol": "TSLA", "name": "Tesla Inc.", "price": 198.40, "change": -5.60 },
+  { "symbol": "NVDA", "name": "NVIDIA Corp.", "price": 128.50, "change": 6.80 },
+  { "symbol": "META", "name": "Meta Platforms Inc.", "price": 495.20, "change": -5.20 },
+  { "symbol": "NFLX", "name": "Netflix Inc.", "price": 680.10, "change": 2.40 },
+  { "symbol": "AMD", "name": "Advanced Micro Devices", "price": 155.30, "change": -1.80 },
+  { "symbol": "DIS", "name": "Walt Disney Co.", "price": 95.60, "change": 0.40 },
+  { "symbol": "SPY", "name": "SPDR S&P 500 ETF", "price": 550.20, "change": 0.60 },
+  { "symbol": "QQQ", "name": "Invesco QQQ Trust", "price": 480.90, "change": 1.10 }
+]
