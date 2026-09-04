@@ -1,4 +1,9 @@
 require('dotenv').config();
+const mongoose = require('mongoose');
+
+// Globally disable query buffering at entry point before any routes/models are loaded
+mongoose.set('bufferCommands', false);
+
 const connectDB = require('./config/db');
 const app = require('./app');
 

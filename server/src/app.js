@@ -13,6 +13,9 @@ dotenv.config();
 
 const app = express();
 
+// Enable trust proxy for Render / Cloud reverse proxies (fixes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
+app.set('trust proxy', 1);
+
 // Security Headers
 app.use(helmet({ contentSecurityPolicy: false }));
 
@@ -22,12 +25,13 @@ app.use(express.json());
 // CORS – allow dynamic origin in cloud deployment
 app.use(cors({ origin: true, credentials: true }));
 
-// Rate Limiter for Auth Routes
+// Rate Limiter for Auth Routes with proxy validation fix
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { success: false, message: 'Too many auth requests from this IP, please try again later.' },
 });
 
