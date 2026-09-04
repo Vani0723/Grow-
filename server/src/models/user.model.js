@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
   lastKnownPrices: { type: Map, of: Number },
   updatedAt: { type: Date, default: Date.now },
   lastVisitedAt: { type: Date },
+}, {
+  bufferCommands: false // Disable buffering so findOne never hangs 10s
 });
 
 userSchema.pre('save', function (next) {
