@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
@@ -13,8 +12,8 @@ dotenv.config();
 
 const app = express();
 
-// Enable trust proxy for Render / Cloud reverse proxies (fixes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
-app.set('trust proxy', 1);
+// Enable trust proxy for cloud deployment
+app.set('trust proxy', true);
 
 // Security Headers
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -25,16 +24,6 @@ app.use(express.json());
 // CORS – allow dynamic origin in cloud deployment
 app.use(cors({ origin: true, credentials: true }));
 
-// Rate Limiter for Auth Routes with proxy validation fix
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false },
-  message: { success: false, message: 'Too many auth requests from this IP, please try again later.' },
-});
-
 const authRoutes = require('./routes/auth.routes');
 const stockRoutes = require('./routes/stock.routes');
 const watchlistRoutes = require('./routes/watchlist.routes');
@@ -43,7 +32,7 @@ const newsRoutes = require('./routes/news.routes');
 // API Routes
 app.use('/api', healthRouter);
 app.use('/api', stockRoutes);
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/news', newsRoutes);
 
