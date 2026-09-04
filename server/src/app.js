@@ -43,15 +43,41 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/news', newsRoutes);
 
-// Production Static Client Serving
-const clientDistPath = path.join(__dirname, '../../client/dist');
-if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
+// Multi-location candidate search for client build output
+const candidatePaths = [
+  path.resolve(__dirname, '../../client/dist'),
+  path.resolve(process.cwd(), 'client/dist'),
+  path.resolve(process.cwd(), '../client/dist'),
+  path.resolve(__dirname, '../client/dist')
+];
+
+let resolvedDistPath = candidatePaths.find(p => fs.existsSync(p));
+
+if (resolvedDistPath) {
+  console.log('✅ Found client build at:', resolvedDistPath);
+  app.use(express.static(resolvedDistPath));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
-    res.sendFile(path.join(clientDistPath, 'index.html'));
+    res.sendFile(path.join(resolvedDistPath, 'index.html'));
+  });
+} else {
+  console.warn('⚠️ Warning: Client build directory (client/dist) not found in candidate paths:', candidatePaths);
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.send(`
+      <!語html>
+      <html>
+        <head><title>Groww Smart Watchlist - API Ready</title></head>
+        <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+          <h2>🌱 Groww Smart Watchlist Backend API is Live!</h2>
+          <p>Backend API routes are active under <code>/api</code>.</p>
+        </body>
+      </html>
+    `);
   });
 }
 
