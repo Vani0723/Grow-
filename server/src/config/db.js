@@ -3,7 +3,9 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-// Production Cloud MongoDB Atlas fallback URI for seamless live deployment
+// Disable Mongoose buffering so queries don't hang 10000ms if DB is connecting/offline
+mongoose.set('bufferCommands', false);
+
 const FALLBACK_CLOUD_MONGO_URI = 'mongodb+srv://groww_demo:GrowwWatchlist2026@cluster0.z1pkw.mongodb.net/smart_watchlist?retryWrites=true&w=majority';
 
 const connectDB = async () => {
@@ -12,12 +14,12 @@ const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 5000,
     });
     console.log('MongoDB connected successfully:', conn.connection.host);
   } catch (err) {
-    console.error('MongoDB Connection Notice:', err.message);
-    console.warn('⚠️ Server operating in Demo Mode for guest watchlist data.');
+    console.warn('⚠️ MongoDB Connection Notice:', err.message);
+    console.warn('⚡ Enabling In-Memory Demo Auth & Watchlist Store for zero-downtime performance.');
   }
 };
 
